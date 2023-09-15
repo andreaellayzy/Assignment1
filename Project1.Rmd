@@ -15,6 +15,11 @@ This is an R Markdown document. Markdown is a simple formatting syntax for autho
 When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
 
 ```{r cars}
+library(here)
+library(tidyverse)
+library(gapminder)
+library(dplyr)
+
 # tests if a directory named "data" exists locally
 if (!dir.exists(here("data"))) {
   dir.create(here("data"))
@@ -38,7 +43,7 @@ glimpse(chocolate)
 
 I think setting the number of bins tobe 15 is the most appropriate. When the number is 15, there is few empty slots in the histogram and we can easily see the distribution. 
 
-```{r pressure, echo=FALSE}
+```{r}
 qplot(rating, data=chocolate)
 qplot(rating, data=chocolate, bins=10)
 qplot(rating, data=chocolate, bins=15)
@@ -47,7 +52,7 @@ qplot(rating, data=chocolate, bins=25)
 ```
 
 
-```{r pressure, echo=FALSE}
+```{r}
 library(dplyr)
 
 reviews_by_country <- chocolate %>%
@@ -57,7 +62,7 @@ print(reviews_by_country)
 ```
 
 
-```{r pressure, echo=FALSE}
+```{r}
 ecuador_chocolates <- chocolate %>%
   filter(country_of_bean_origin == "Ecuador")
 mean <- mean(ecuador_chocolates$rating)
@@ -69,7 +74,7 @@ print(sd)
 ```
 
 
-```{r pressure, echo=FALSE}
+```{r}
 best_ecuador_chocolate <- ecuador_chocolates %>%
   group_by(company_manufacturer) %>%
   summarise(average_rating = mean(rating, na.rm = TRUE))
@@ -79,7 +84,7 @@ print(best_company[,1])
 ```
 
 
-```{r pressure, echo=FALSE}
+```{r}
 average_ratings_by_country <- chocolate %>%
   group_by(country_of_bean_origin) %>%
   summarise(average_rating = mean(rating, na.rm = TRUE))
@@ -90,7 +95,7 @@ print(top_3_countries[,1])
 ```
 
 
-```{r pressure, echo=FALSE}
+```{r}
 average_ratings_by_country <- chocolate %>%
   group_by(country_of_bean_origin) %>%
   summarise(average_rating = mean(rating, na.rm = TRUE), review_num = n())
@@ -101,7 +106,7 @@ print(top_3_countries[,1])
 ```
 
 
-```{r pressure, echo=FALSE}
+```{r}
 #Identify the countries of bean origin with at least 50 reviews
 reviews_by_country <- chocolate %>%
   group_by(country_of_bean_origin) %>%
@@ -125,7 +130,7 @@ head(chocolate)
 ```
 
 
-```{r pressure, echo=FALSE}
+```{r}
 options(repr.plot.width = 10, repr.plot.height = 6)
 boxplot_plots <- 
   ggplot(chocolate, aes(x = chocolate_percentage_group, y = rating)) +
@@ -142,13 +147,12 @@ print(boxplot_plots)
 ```
 ## Part2
 
-```{r pressure, echo=FALSE}
-install.packages("gapminder")
+```{r}
 library(gapminder)
 head(gapminder)
 ```
 
-```{r pressure, echo=FALSE}
+```{r}
 library(dplyr)
 lookup_table <- gapminder %>%
   select(country, continent) %>%
@@ -159,14 +163,14 @@ chocolate_continent <- chocolate %>%
 head(chocolate_continent)
 
 ```
-```{r pressure, echo=FALSE}
-filtered_chocolate_continent <- chocolate_continent %>%
-  inner_join(filtered_countries, by = "country_of_bean_origin")
-
-head(filtered_chocolate_continent)
+```{r}
+  filtered_chocolate_continent <- chocolate_continent %>%
+   inner_join(more_10_countries, by = "country_of_bean_origin")
+ 
+ head(filtered_chocolate_continent)
 ```
 
-```{r pressure, echo=FALSE}
+```{r}
 filtered_chocolate_continent <- filtered_chocolate_continent %>%
   filter(country_of_bean_origin != "Blend")
 
@@ -175,7 +179,7 @@ head(filtered_chocolate_continent)
 ```
 
 
-```{r pressure, echo=FALSE}
+```{r, echo=FALSE}
 
 filtered_chocolate_continent <- filtered_chocolate_continent[!is.na(filtered_chocolate_continent$continent), ]
 violin_plots <- ggplot(filtered_chocolate_continent, aes(x = continent, y = average_rating)) +
@@ -191,7 +195,7 @@ print(violin_plots)
 ```
 
 
-```{r pressure, echo=FALSE}
+```{r}
 library(tidyr)
 library(dplyr)
 chocolate_with_ingredients <- chocolate %>%
@@ -209,7 +213,7 @@ head(chocolate_with_ingredients)
 ```
 
 
-```{r pressure, echo=FALSE}
+```{r}
 ```
 
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
