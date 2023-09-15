@@ -1,0 +1,215 @@
+---
+title: "Project1"
+output: html_document
+date: "2023-09-15"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+# tests if a directory named "data" exists locally
+if (!dir.exists(here("data"))) {
+  dir.create(here("data"))
+}
+
+# saves data only once (not each time you knit a R Markdown)
+if (!file.exists(here("data", "chocolate.RDS"))) {
+  url_csv <- "https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-01-18/chocolate.csv"
+  chocolate <- readr::read_csv(url_csv)
+  
+  # save the file to RDS objects
+  saveRDS(chocolate, file = here("data", "chocolate.RDS"))
+}
+
+chocolate <- readRDS(here("data", "chocolate.RDS"))
+as_tibble(chocolate)
+glimpse(chocolate)
+```
+
+## Part1
+
+I think setting the number of bins tobe 15 is the most appropriate. When the number is 15, there is few empty slots in the histogram and we can easily see the distribution. 
+
+```{r pressure, echo=FALSE}
+qplot(rating, data=chocolate)
+qplot(rating, data=chocolate, bins=10)
+qplot(rating, data=chocolate, bins=15)
+qplot(rating, data=chocolate, bins=20)
+qplot(rating, data=chocolate, bins=25)
+```
+
+
+```{r pressure, echo=FALSE}
+library(dplyr)
+
+reviews_by_country <- chocolate %>%
+  group_by(country_of_bean_origin) %>%
+  summarise(count = n())
+print(reviews_by_country)
+```
+
+
+```{r pressure, echo=FALSE}
+ecuador_chocolates <- chocolate %>%
+  filter(country_of_bean_origin == "Ecuador")
+mean <- mean(ecuador_chocolates$rating)
+total <- sum(!is.na(ecuador_chocolates$rating))
+sd <- sd(ecuador_chocolates$rating)
+print(mean)
+print(total)
+print(sd)
+```
+
+
+```{r pressure, echo=FALSE}
+best_ecuador_chocolate <- ecuador_chocolates %>%
+  group_by(company_manufacturer) %>%
+  summarise(average_rating = mean(rating, na.rm = TRUE))
+best_company <- best_ecuador_chocolate %>%
+  filter(average_rating == max(average_rating))
+print(best_company[,1])
+```
+
+
+```{r pressure, echo=FALSE}
+average_ratings_by_country <- chocolate %>%
+  group_by(country_of_bean_origin) %>%
+  summarise(average_rating = mean(rating, na.rm = TRUE))
+sorted_countries <- average_ratings_by_country %>%
+  arrange(desc(average_rating))
+top_3_countries <- head(sorted_countries, n = 3)
+print(top_3_countries[,1])
+```
+
+
+```{r pressure, echo=FALSE}
+average_ratings_by_country <- chocolate %>%
+  group_by(country_of_bean_origin) %>%
+  summarise(average_rating = mean(rating, na.rm = TRUE), review_num = n())
+more_10_countries <- average_ratings_by_country %>% filter(review_num >= 10)
+sorted_countries <- more_10_countries %>% arrange(desc(average_rating))
+top_3_countries <- head(sorted_countries, n = 3)
+print(top_3_countries[,1])
+```
+
+
+```{r pressure, echo=FALSE}
+#Identify the countries of bean origin with at least 50 reviews
+reviews_by_country <- chocolate %>%
+  group_by(country_of_bean_origin) %>%
+  summarise(review_count = n())
+countries_with_50_reviews <- reviews_by_country %>%
+  filter(review_count >= 50) %>%
+  pull(country_of_bean_origin)
+filtered_chocolate <- chocolate %>%
+  filter(country_of_bean_origin %in% countries_with_50_reviews)
+
+#create a new column that groups chocolate percentages into one of four groups
+chocolate <- chocolate %>%
+  mutate(chocolate_percentage_group = case_when(
+    substr(cocoa_percent, 1, 2) < 60 ~ "<60%",
+    substr(cocoa_percent, 1, 2) >= 60 & substr(cocoa_percent, 1, 2) < 70 ~ "60% to 70%",
+    substr(cocoa_percent, 1, 2) >= 70 & substr(cocoa_percent, 1, 2) < 90 ~ "70% to 90%",
+    substr(cocoa_percent, 1, 2) >= 90 ~ ">=90%"
+  ))
+head(chocolate)
+
+```
+
+
+```{r pressure, echo=FALSE}
+options(repr.plot.width = 10, repr.plot.height = 6)
+boxplot_plots <- 
+  ggplot(chocolate, aes(x = chocolate_percentage_group, y = rating)) +
+  geom_boxplot() +
+  facet_wrap(~ country_of_bean_origin) +
+  labs(title = "Ratings by Chocolate Percentage Group",
+       x = "Chocolate Percentage Group",
+       y = "Rating") +
+  theme_minimal()+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
+
+print(boxplot_plots)
+
+```
+## Part2
+
+```{r pressure, echo=FALSE}
+install.packages("gapminder")
+library(gapminder)
+head(gapminder)
+```
+
+```{r pressure, echo=FALSE}
+library(dplyr)
+lookup_table <- gapminder %>%
+  select(country, continent) %>%
+  distinct()
+
+chocolate_continent <- chocolate %>%
+  left_join(lookup_table, by = c("country_of_bean_origin" = "country"))
+head(chocolate_continent)
+
+```
+```{r pressure, echo=FALSE}
+filtered_chocolate_continent <- chocolate_continent %>%
+  inner_join(filtered_countries, by = "country_of_bean_origin")
+
+head(filtered_chocolate_continent)
+```
+
+```{r pressure, echo=FALSE}
+filtered_chocolate_continent <- filtered_chocolate_continent %>%
+  filter(country_of_bean_origin != "Blend")
+
+# View the updated dataset
+head(filtered_chocolate_continent)
+```
+
+
+```{r pressure, echo=FALSE}
+
+filtered_chocolate_continent <- filtered_chocolate_continent[!is.na(filtered_chocolate_continent$continent), ]
+violin_plots <- ggplot(filtered_chocolate_continent, aes(x = continent, y = average_rating)) +
+  geom_violin() +
+  labs(title = "Ratings by Continent",
+       x = "Continent",
+       y = "Rating") +
+  theme_minimal()
+
+# Print the plots
+print(violin_plots)
+
+```
+
+
+```{r pressure, echo=FALSE}
+library(tidyr)
+library(dplyr)
+chocolate_with_ingredients <- chocolate %>%
+  mutate(
+    beans = ifelse(grepl("B", ingredients), 1, 0),
+    sugar = ifelse(grepl("S" , ingredients), 1, 0),
+    cocoa_butter = ifelse(grepl("C" , ingredients), 1, 0),
+    vanilla = ifelse(grepl("V" , ingredients), 1, 0),
+    lecithin = ifelse(grepl("L" , ingredients), 1, 0),
+    salt = ifelse(grepl("Sa" , ingredients), 1, 0)
+  )
+
+# View the updated dataset with the new ingredient columns
+head(chocolate_with_ingredients)
+```
+
+
+```{r pressure, echo=FALSE}
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
