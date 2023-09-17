@@ -1,0 +1,416 @@
+---
+title: "Project1"
+output:
+  html_document: default
+  pdf_document: default
+date: "2023-09-16"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+
+```{r}
+library(here)
+library(tidyverse)
+```
+
+
+```{r}
+library(gapminder)
+library(dplyr)
+
+# tests if a directory named "data" exists locally
+if (!dir.exists(here("data"))) {
+  dir.create(here("data"))
+}
+
+# saves data only once (not each time you knit a R Markdown)
+if (!file.exists(here("data", "chocolate.RDS"))) {
+  url_csv <- "https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-01-18/chocolate.csv"
+  chocolate <- readr::read_csv(url_csv)
+  
+  # save the file to RDS objects
+  saveRDS(chocolate, file = here("data", "chocolate.RDS"))
+}
+
+chocolate <- readRDS(here("data", "chocolate.RDS"))
+as_tibble(chocolate)
+```
+
+
+```{r}
+glimpse(chocolate)
+```
+### Part1 {.tabset .tabset-fade}
+#### Question1
+I think setting the number of bins tobe 15 is the most appropriate. When the number is 15, there is few empty slots in the histogram and we can easily see the distribution.
+```{r}
+qplot(rating, data=chocolate)
+qplot(rating, data=chocolate, bins=10)
+qplot(rating, data=chocolate, bins=15)
+qplot(rating, data=chocolate, bins=20)
+qplot(rating, data=chocolate, bins=25)
+```
+
+#### Question2
+```{r}
+library(dplyr)
+
+reviews_by_country <- chocolate %>%
+  group_by(country_of_bean_origin) %>%
+  summarise(count = n())
+print(reviews_by_country)
+```
+
+#### Question3
+```{r}
+ecuador_chocolates <- chocolate %>%
+  filter(country_of_bean_origin == "Ecuador")
+mean <- mean(ecuador_chocolates$rating)
+total <- sum(!is.na(ecuador_chocolates$rating))
+sd <- sd(ecuador_chocolates$rating)
+print(mean)
+print(total)
+print(sd)
+```
+
+#### Question4
+```{r}
+best_ecuador_chocolate <- ecuador_chocolates %>%
+  group_by(company_manufacturer) %>%
+  summarise(average_rating = mean(rating, na.rm = TRUE))
+best_company <- best_ecuador_chocolate %>%
+  filter(average_rating == max(average_rating))
+print(best_company[,1])
+```
+
+#### Question5
+```{r}
+average_ratings_by_country <- chocolate %>%
+  group_by(country_of_bean_origin) %>%
+  summarise(average_rating = mean(rating, na.rm = TRUE))
+sorted_countries <- average_ratings_by_country %>%
+  arrange(desc(average_rating))
+top_3_countries <- head(sorted_countries, n = 3)
+print(top_3_countries[,1])
+```
+
+#### Question6
+```{r}
+average_ratings_by_country <- chocolate %>%
+  group_by(country_of_bean_origin) %>%
+  summarise(average_rating = mean(rating, na.rm = TRUE), review_num = n())
+more_10_countries <- average_ratings_by_country %>% filter(review_num >= 10)
+sorted_countries <- more_10_countries %>% arrange(desc(average_rating))
+top_3_countries <- head(sorted_countries, n = 3)
+print(top_3_countries[,1])
+```
+
+#### Question7
+```{r}
+#Identify the countries of bean origin with at least 50 reviews
+reviews_by_country <- chocolate %>%
+  group_by(country_of_bean_origin) %>%
+  summarise(review_count = n())
+countries_with_50_reviews <- reviews_by_country %>%
+  filter(review_count >= 50) %>%
+  pull(country_of_bean_origin)
+filtered_chocolate <- chocolate %>%
+  filter(country_of_bean_origin %in% countries_with_50_reviews)
+
+#create a new column that groups chocolate percentages into one of four groups
+filtered_chocolate_percent <- filtered_chocolate %>%
+  mutate(chocolate_percentage_group = case_when(
+    substr(cocoa_percent, 1, 2) < 60 ~ "<60%",
+    substr(cocoa_percent, 1, 2) >= 60 & substr(cocoa_percent, 1, 2) < 70 ~ "60% to 70%",
+    substr(cocoa_percent, 1, 2) >= 70 & substr(cocoa_percent, 1, 2) < 90 ~ "70% to 90%",
+    substr(cocoa_percent, 1, 2) >= 90 ~ ">=90%"
+  ))
+head(filtered_chocolate_percent)
+```
+
+
+```{r}
+options(repr.plot.width = 12, repr.plot.height = 9)
+boxplot_plots <- 
+  ggplot(filtered_chocolate_percent, aes(x = chocolate_percentage_group, y = rating)) +
+  geom_boxplot() +
+  facet_wrap(~ country_of_bean_origin) +
+  labs(title = "Ratings by Chocolate Percentage Group",
+       x = "Chocolate Percentage Group",
+       y = "Rating") +
+  theme_minimal()+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
+
+print(boxplot_plots)
+```
+
+### Part2 {.tabset .tabset-fade}
+```{r}
+library(gapminder)
+head(gapminder)
+```
+
+#### Question1
+```{r}
+library(dplyr)
+lookup_table <- gapminder %>%
+  
+  select(country, continent) %>%
+  distinct()
+
+chocolate %>%
+  select(country_of_bean_origin) %>%
+  distinct()
+
+chocolate_continent <- chocolate %>%
+  mutate(country_of_bean_origin = ifelse(country_of_bean_origin == "U.S.A.", "United States", country_of_bean_origin)) %>% 
+  mutate(country_of_bean_origin = ifelse(country_of_bean_origin %in% c("Sao Tome", "Principe", "Sao Tome & Principe"), "Sao Tome and Principe", country_of_bean_origin)) %>% 
+  mutate(country_of_bean_origin = ifelse(country_of_bean_origin == "DR Congo", "Congo, Dem. Rep.", country_of_bean_origin)) %>% 
+  left_join(lookup_table, by = c("country_of_bean_origin" = "country"))
+#head(chocolate_continent)
+
+chocolate_continent %>% 
+  distinct(continent)
+
+chocolate_continent %>% 
+  filter(is.na(continent)) %>% 
+  distinct(country_of_bean_origin)
+# 24 countries are with NA values
+
+
+chocolate_continent <- chocolate_continent %>%
+  mutate(continent = as.character(continent)) %>% 
+  mutate(continent = ifelse(country_of_bean_origin %in% c("Fiji", "Papua New Guinea", "Vanuatu", "Solomon Islands", "Samoa"), "Oceania", continent)) %>% 
+  mutate(continent = ifelse(country_of_bean_origin %in% c("Belize", "Grenada", "Martinique", "St. Lucia", "St.Vincent-Grenadines", "Suriname","Tobago","Trinidad"), "Americas", continent)) %>%
+  mutate(continent = ifelse(country_of_bean_origin %in% c("Burma", "Sumatra", "Sulawesi"), "Asia", continent)) %>%
+  mutate(continent = ifelse(country_of_bean_origin %in% c("Ivory Coast","Congo"), "Africa", continent))
+
+
+  
+```
+
+#### Question2
+```{r}
+filtered_chocolate_continent <- chocolate_continent %>%
+   inner_join(more_10_countries, by = "country_of_bean_origin")
+ 
+ head(filtered_chocolate_continent)
+ 
+ chocolate_continent %>% 
+   distinct(continent)
+```
+
+#### Question3
+```{r}
+filtered_chocolate_continent <- filtered_chocolate_continent %>%
+  filter(country_of_bean_origin != "Blend")
+
+# View the updated dataset
+head(filtered_chocolate_continent)
+```
+
+#### Question4
+```{r}
+#filtered_chocolate_continent <- #filtered_chocolate_continent[!is.na(filtered_chocolate_continent$continent), ]
+violin_plots <- ggplot(filtered_chocolate_continent, 
+                       aes(x = continent, y = average_rating)) +
+  geom_violin() +
+  labs(title = "Ratings by Continent",
+       x = "Continent",
+       y = "Rating") +
+  theme_minimal()
+
+chocolate_continent %>% 
+  distinct(continent)
+
+print(violin_plots)
+```
+
+### Part3 {.tabset .tabset-fade}
+#### Question1
+```{r}
+library(tidyr)
+library(dplyr)
+chocolate_with_ingredients <- chocolate %>%
+  mutate(
+    beans = ifelse(grepl("B", ingredients), 1, 0),
+    sugar = ifelse(grepl("S" , ingredients), 1, 0),
+    cocoa_butter = ifelse(grepl("C" , ingredients), 1, 0),
+    vanilla = ifelse(grepl("V" , ingredients), 1, 0),
+    lecithin = ifelse(grepl("L" , ingredients), 1, 0),
+    salt = ifelse(grepl("Sa" , ingredients), 1, 0)
+  )
+
+head(chocolate_with_ingredients)
+```
+
+#### Question2
+```{r}
+chocolate_with_ingredients_char <- chocolate_with_ingredients %>%
+  mutate(
+    char_cocoa = ifelse(grepl("cocoa", most_memorable_characteristics), 1, 0),
+    char_sweet = ifelse(grepl("sweet", most_memorable_characteristics), 1, 0),
+    char_nutty = ifelse(grepl("nutty", most_memorable_characteristics), 1, 0),
+    char_creamy = ifelse(grepl("creamy", most_memorable_characteristics), 1, 0),
+    char_roasty = ifelse(grepl("roasty", most_memorable_characteristics), 1, 0),
+    char_earthy = ifelse(grepl("earthy", most_memorable_characteristics), 1, 0)
+  )
+head(chocolate_with_ingredients_char)
+```
+
+#### Question3
+```{r}
+means_by_year <- chocolate_with_ingredients_char %>%
+  group_by(review_date) %>%
+  summarise(
+    mean_char_cocoa = mean(char_cocoa),
+    mean_char_sweet = mean(char_sweet),
+    mean_char_nutty = mean(char_nutty),
+    mean_char_creamy = mean(char_creamy),
+    mean_char_roasty = mean(char_roasty),
+    mean_char_earthy = mean(char_earthy),
+    mean_beans = mean(beans),
+    mean_sugar = mean(sugar),
+    mean_cocoa_butter = mean(cocoa_butter),
+    mean_vanilla = mean(vanilla),
+    mean_lecithin = mean(lecithin),
+    mean_salt = mean(salt)
+  )
+
+means_by_year
+```
+
+#### Question4
+```{r}
+library(tidyr)
+
+long_means_by_year <- means_by_year %>%
+  pivot_longer(
+    cols = starts_with("mean_"),
+    names_to = "feature",
+    values_to = "mean_score")
+head(long_means_by_year)
+```
+
+### Part 4 
+```{r}
+plot_list <- list()
+
+features <- c("char_cocoa", "char_sweet", "char_nutty", "char_creamy", "char_roasty", "char_earthy", "beans", "sugar", "cocoa_butter", "vanilla", "lecithin", "salt")
+
+for (feature in features) {
+  p <- ggplot(long_means_by_year, aes(x = review_date, y = mean_score)) +
+    geom_point() +
+    geom_smooth(method = "loess", se = FALSE) +
+    labs(
+      title = paste("Trend in Mean Score for", feature),
+      subtitle = "Key trends summary",
+      x = "Year",
+      y = "Mean Score"
+    ) +
+    theme_minimal() +
+    theme(
+      plot.title = element_text(size = 5),    
+      plot.subtitle = element_text(size = 4),  
+      axis.title.x = element_text(size = 4),  
+      axis.title.y = element_text(size = 4),   
+      axis.text.x = element_text(size = 4),    
+      axis.text.y = element_text(size = 4)  
+    )
+  
+  p <- p + coord_cartesian(ylim = c(0, 1)) +
+    theme(
+      plot.background = element_blank(),
+      panel.border = element_rect(fill = NA, color = "black"),
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      plot.margin = margin(1, 1, 1, 1, "cm")
+    ) +
+    theme(
+      plot.margin = margin(0.01,0.01,0.01,0.01, "in"),
+      plot.title = element_text(hjust = 0.5),
+      plot.caption = element_text(hjust = 0.5)
+    ) +
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1),
+      axis.text.y = element_text(angle = 0, hjust = 1)
+    )
+  
+  plot_list[[feature]] <- p
+}
+
+library(patchwork)
+wrap_plots(plot_list, nrow = 5)
+```
+
+### Part 5 {.tabset .tabset-fade}
+```{r}
+chocolate %>% 
+  ggplot(aes(x = country_of_bean_origin, y = rating, color = company_location))+
+  # x represent country of bean origin which has too many unique values
+  # y represent ratings which are same for many row, points stacked on top of each other
+  # color the points by the company location makes the plot much more messy and hard to derive information
+  geom_point(alpha = 0.1, shape = 18, size = 6)+
+  # geom_point is not a good choice, should consider violin/boxplot in this case
+  # size of the points is too big
+  # alpha controls the transparency of the points, which is too high
+  # shape = 18 changes the shape of point from circle to diamond shape
+  theme(legend.position = "none",
+        panel.background = element_rect(fill = "pink"))
+  # legend is hided with no equivalent information in the plot
+  # change the background color to pink, which is very similar to point color
+  
+```
+
+### Part 6 {.tabset .tabset-fade}
+```{r}
+chocolate %>%
+  ggplot(aes(
+      x = as.factor(review_date),
+      y = rating,
+      fill = review_date
+  )) +
+  # Here I adjust the width and the position of the plots
+  geom_violin(width = 0.7, position = position_nudge(x = 0.15)) +
+  # Here I change the fill and border colors of the violin plots
+  geom_violin(fill = "skyblue", color = "darkblue")+
+  # Here I add a box plot inside the violin plot to provide additional summary statistics for the distribution
+  geom_boxplot(width = 0.1, fill = "white", color = "black")+
+  # Here I add the table and axis label to make the graph easier to understand. 
+  labs(
+    title = "Distribution of Ratings by Year",
+    x = "Year",
+    y = "Rating",
+    fill = "Year") +
+  # Here I adjust to my favorite theme
+  theme_minimal() +
+  # Here I rotate the x-axis label to make it clearer
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  # Here I add a new legend for better understanding.
+  guides(fill = guide_legend(title = "Year"))
+
+
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
